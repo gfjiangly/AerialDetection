@@ -3,6 +3,7 @@ import numpy as np
 from numpy import random
 
 from mmdet.core.evaluation.bbox_overlaps import bbox_overlaps
+from mmdet.core.mask.utils import mask_expand, mask_crop
 
 
 class PhotoMetricDistortion(object):
@@ -73,9 +74,9 @@ class Expand(object):
             self.mean = mean
         self.min_ratio, self.max_ratio = ratio_range
 
-    def __call__(self, img, boxes, labels):
+    def __call__(self, img, boxes, labels, masks):
         if random.randint(2):
-            return img, boxes, labels
+            return img, boxes, labels, masks
 
         h, w, c = img.shape
         ratio = random.uniform(self.min_ratio, self.max_ratio)
@@ -86,7 +87,10 @@ class Expand(object):
         expand_img[top:top + h, left:left + w] = img
         img = expand_img
         boxes += np.tile((left, top), 2)
-        return img, boxes, labels
+        if masks is not None:
+            masks = mask_expand(masks, expand_img.shape[0], 
+                                expand_img.shape[1], top, left)
+        return img, boxes, labels, masks
 
 
 class RandomCrop(object):
@@ -96,12 +100,12 @@ class RandomCrop(object):
         self.sample_mode = (1, *min_ious, 0)
         self.min_crop_size = min_crop_size
 
-    def __call__(self, img, boxes, labels):
+    def __call__(self, img, boxes, labels, masks):
         h, w, c = img.shape
         while True:
             mode = random.choice(self.sample_mode)
             if mode == 1:
-                return img, boxes, labels
+                return img, boxes, labels, masks
 
             min_iou = mode
             for i in range(50):
@@ -138,7 +142,10 @@ class RandomCrop(object):
                 boxes[:, :2] = boxes[:, :2].clip(min=patch[:2])
                 boxes -= np.tile(patch[:2], 2)
 
-                return img, boxes, labels
+                if masks is not None:
+                    masks = masks[mask]
+                    masks = mask_crop(masks, patch)
+                return img, boxes, labels, masks
 
 
 class ExtraAugmentation(object):
@@ -156,8 +163,15 @@ class ExtraAugmentation(object):
         if random_crop is not None:
             self.transforms.append(RandomCrop(**random_crop))
 
-    def __call__(self, img, boxes, labels):
+    def __call__(self, img, boxes, labels, masks=None):
         img = img.astype(np.float32)
         for transform in self.transforms:
-            img, boxes, labels = transform(img, boxes, labels)
-        return img, boxes, labels
+            if masks is not None:
+                img, boxes, labels, masks = transform(img, boxes, labels, masks)
+            else:
+                img, boxes, labels = transform(img, boxes, labels)
+        if masks is not None:
+            return img, boxes, labels, masks
+        else:
+            return img, boxes, labels
+

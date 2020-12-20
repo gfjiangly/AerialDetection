@@ -564,6 +564,8 @@ def mask2poly_single(binary_mask):
     # contour_lens = np.array(list(map(len, contours)))
     # max_id = contour_lens.argmax()
     # max_contour = contours[max_id]
+    if len(contours) == 0:
+        return []
     max_contour = max(contours, key=len)
     rect = cv2.minAreaRect(max_contour)
     poly = cv2.boxPoints(rect)
@@ -625,7 +627,6 @@ def get_best_begin_point_single(coordinate):
     return  combinate[force_flag]
 
 def get_best_begin_point_warp_single(coordinate):
-
     return TuplePoly2Poly(get_best_begin_point_single(coordinate))
 
 def get_best_begin_point(coordinate_list):

@@ -203,6 +203,14 @@ def main():
                         result_file = args.out + '.{}.json'.format(name)
                         results2json(dataset, outputs_, result_file)
                         coco_eval(result_file, eval_types, dataset.coco)
+        
+        from parse_results import parse_results
+        parse_results(args.config, args.out, cfg.work_dir, 'OBB')
+        from cvtools.evaluation.eval_dota_task1 import eval_dota_task1
+        det_path = osp.join(cfg.work_dir, 'Task1_results_nms')
+        ann_path = '/media/data/DOTA/val/labelTxt-v1.0/labelTxt'
+        imageset_file = '/media/data/DOTA/val/val.txt'
+        eval_dota_task1(det_path, ann_path, imageset_file)
 
 
 if __name__ == '__main__':

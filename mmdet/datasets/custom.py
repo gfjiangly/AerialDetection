@@ -11,6 +11,8 @@ from .utils import to_tensor, random_scale
 from .extra_aug import ExtraAugmentation
 from .rotate_aug import RotateAugmentation
 from .rotate_aug import RotateTestAugmentation
+from mmdet.core.bbox.transforms_rbbox import mask2poly
+
 
 class CustomDataset(Dataset):
     """Custom dataset for detection.
@@ -224,11 +226,26 @@ class CustomDataset(Dataset):
 
         # extra augmentation
         if self.extra_aug is not None:
-            # mmcv.imwrite(img, '/code/debug/AerialDetection/retinanet/color/' + img_info['file_name'])
-            img, gt_bboxes, gt_labels = self.extra_aug(img, gt_bboxes,
-                                                       gt_labels)
+            # # debug
+            # import cvtools
+            # from mmdet.core.bbox.transforms_rbbox import mask2poly, get_best_begin_point
+            # gt_polys = get_best_begin_point(mask2poly(gt_masks))
+            # img_draw = cvtools.draw_boxes_texts(img, gt_polys, box_format='polygon')
+            # cvtools.imwrite(img_draw, '/code/debug/AerialDetection/retinanet/expand/' + img_info['file_name'])
+            # skip the image if there is no valid gt bbox
+            # mmcv.imwrite(img, '/code/debug/AerialDetection/retinanet/expand/' + img_info['file_name'])
+            img, gt_bboxes, gt_labels, gt_masks = self.extra_aug(img, gt_bboxes,
+                                                       gt_labels, np.array(gt_masks))
             # import cvtools
             # mmcv.imwrite(img, '/code/debug/AerialDetection/retinanet/color/color_' + img_info['file_name'])
+                    # debug
+            # import cvtools
+            # from mmdet.core.bbox.transforms_rbbox import mask2poly, get_best_begin_point
+            # gt_polys = get_best_begin_point(mask2poly(gt_masks))
+            # img_draw = cvtools.draw_boxes_texts(img.copy(), gt_polys, box_format='polygon')
+            # from cvtools.utils.path import add_prefix_filename_suffix
+            # save_img_name = add_prefix_filename_suffix(img_info['file_name'], suffix='_expand_crop')
+            # cvtools.imwrite(img_draw, '/code/debug/AerialDetection/retinanet/expand/' + save_img_name)
 
         # rotate augmentation
         if self.rotate_aug is not None:
@@ -278,6 +295,21 @@ class CustomDataset(Dataset):
             #                                scale_factor, flip)
             gt_masks = self.mask_transform(gt_masks, pad_shape,
                                            scale_factor, flip)
+        
+            polys = mask2poly(gt_masks)
+            gt_masks_save = []
+            gt_bboxes_save = []
+            gt_labels_save = []
+            for i in range(len(polys)):
+                if len(polys[i]) > 0:
+                    gt_masks_save.append(gt_masks[i])
+                    gt_bboxes_save.append(gt_bboxes[i])
+                    gt_labels_save.append(gt_labels[i])
+            gt_masks = gt_masks_save
+            gt_bboxes = np.array(gt_bboxes_save)
+            gt_labels = np.array(gt_labels_save)
+            if len(gt_bboxes_save) == 0:
+                return None
 
         ori_shape = (img_info['height'], img_info['width'], 3)
         img_meta = dict(

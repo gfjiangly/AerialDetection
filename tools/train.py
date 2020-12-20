@@ -39,6 +39,17 @@ def parse_args():
     return args
 
 
+def _do_dota_eval(config, checkpoint, out):
+    import subprocess
+    print('---------------------------------------------------')
+    print('Computing results with the official DOTA eval code.')
+    print('---------------------------------------------------')
+    cmd = 'python tools/eval.py {} {} --out={}'.format(config, checkpoint, out)
+    print(('Running:\n{}'.format(cmd)))
+    status = subprocess.call(cmd, shell=True)
+    print(status)
+
+
 def main():
     args = parse_args()
 
@@ -89,6 +100,12 @@ def main():
         distributed=distributed,
         validate=args.validate,
         logger=logger)
+
+    # 训练完成后做一次评估
+    import os.path as osp
+    checkpoint = osp.join(cfg.work_dir, 'epoch_12.pth')
+    out = osp.join(cfg.work_dir, 'val_cropped_dets.pkl')
+    _do_dota_eval(args.config, checkpoint, out)
 
 
 if __name__ == '__main__':
