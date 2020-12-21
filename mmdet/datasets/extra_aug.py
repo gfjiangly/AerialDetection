@@ -12,57 +12,91 @@ class PhotoMetricDistortion(object):
                  brightness_delta=32,
                  contrast_range=(0.5, 1.5),
                  saturation_range=(0.5, 1.5),
-                 hue_delta=18):
+                 hue_delta=18,
+                 color_choose=0):
         self.brightness_delta = brightness_delta
         self.contrast_lower, self.contrast_upper = contrast_range
         self.saturation_lower, self.saturation_upper = saturation_range
         self.hue_delta = hue_delta
+        self.color_choose = color_choose
 
-    def __call__(self, img, boxes, labels):
-        # random brightness
-        if random.randint(2):
-            delta = random.uniform(-self.brightness_delta,
-                                   self.brightness_delta)
-            img += delta
-
-        # mode == 0 --> do random contrast first
-        # mode == 1 --> do random contrast last
-        mode = random.randint(2)
-        if mode == 1:
+    def __call__(self, img, boxes, labels, masks=None):
+        if self.color_choose == 0:
+            # random brightness
             if random.randint(2):
-                alpha = random.uniform(self.contrast_lower,
-                                       self.contrast_upper)
-                img *= alpha
+                delta = random.uniform(-self.brightness_delta,
+                                    self.brightness_delta)
+                img += delta
 
-        # convert color from BGR to HSV
-        img = mmcv.bgr2hsv(img)
+            # mode == 0 --> do random contrast first
+            # mode == 1 --> do random contrast last
+            mode = random.randint(2)
+            if mode == 1:
+                if random.randint(2):
+                    alpha = random.uniform(self.contrast_lower,
+                                        self.contrast_upper)
+                    img *= alpha
 
-        # random saturation
-        if random.randint(2):
-            img[..., 1] *= random.uniform(self.saturation_lower,
-                                          self.saturation_upper)
+            # convert color from BGR to HSV
+            img = mmcv.bgr2hsv(img)
 
-        # random hue
-        if random.randint(2):
-            img[..., 0] += random.uniform(-self.hue_delta, self.hue_delta)
-            img[..., 0][img[..., 0] > 360] -= 360
-            img[..., 0][img[..., 0] < 0] += 360
-
-        # convert color from HSV to BGR
-        img = mmcv.hsv2bgr(img)
-
-        # random contrast
-        if mode == 0:
+            # random saturation
             if random.randint(2):
-                alpha = random.uniform(self.contrast_lower,
-                                       self.contrast_upper)
-                img *= alpha
+                img[..., 1] *= random.uniform(self.saturation_lower,
+                                            self.saturation_upper)
 
-        # randomly swap channels
-        if random.randint(2):
-            img = img[..., random.permutation(3)]
+            # random hue
+            if random.randint(2):
+                img[..., 0] += random.uniform(-self.hue_delta, self.hue_delta)
+                img[..., 0][img[..., 0] > 360] -= 360
+                img[..., 0][img[..., 0] < 0] += 360
 
-        return img, boxes, labels
+            # convert color from HSV to BGR
+            img = mmcv.hsv2bgr(img)
+
+            # random contrast
+            if mode == 0:
+                if random.randint(2):
+                    alpha = random.uniform(self.contrast_lower,
+                                        self.contrast_upper)
+                    img *= alpha
+
+            # randomly swap channels
+            if random.randint(2):
+                img = img[..., random.permutation(3)]
+        else:
+            if self.color_choose == 1:
+                # random brightness
+                if random.randint(2):
+                    delta = random.uniform(-self.brightness_delta,
+                                        self.brightness_delta)
+                    img += delta
+            elif self.color_choose == 2:
+                # random contrast first
+                if random.randint(2):
+                    alpha = random.uniform(self.contrast_lower,
+                                        self.contrast_upper)
+                    img *= alpha
+            else:
+                # convert color from BGR to HSV
+                img = mmcv.bgr2hsv(img)
+
+                if self.color_choose == 3:
+                    # random saturation
+                    if random.randint(2):
+                        img[..., 1] *= random.uniform(self.saturation_lower,
+                                                    self.saturation_upper)
+                if self.color_choose == 4:
+                    # random hue
+                    if random.randint(2):
+                        img[..., 0] += random.uniform(-self.hue_delta, self.hue_delta)
+                        img[..., 0][img[..., 0] > 360] -= 360
+                        img[..., 0][img[..., 0] < 0] += 360
+
+                # convert color from HSV to BGR
+                img = mmcv.hsv2bgr(img)
+
+        return img, boxes, labels, masks
 
 
 class Expand(object):

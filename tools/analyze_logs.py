@@ -91,6 +91,94 @@ def plot_curve(log_dicts, args):
         plt.cla()
 
 
+def plot_loss_curve(log_dicts, args):
+    if args.backend is not None:
+        plt.switch_backend(args.backend)
+    # sns.set_style(args.style)
+    # if legend is None, use {filename}_{key} as legend
+    legend = args.legend
+    if legend is None:
+        legend = args.keys * len(args.json_logs)
+    assert len(legend) == (len(args.json_logs) * len(args.keys))
+    metrics = args.keys
+
+    num_metrics = len(metrics)
+    for i, log_dict in enumerate(log_dicts):
+        epochs = list(log_dict.keys())
+        for j, metric in enumerate(metrics):
+            print('plot curve of {}, metric is {}'.format(
+                args.json_logs[i], metric))
+            assert metric in log_dict[epochs[
+                0]], '{} does not contain metric {}'.format(
+                    args.json_logs[i], metric)
+            xs = []
+            ys = []
+            num_iters_per_epoch = log_dict[epochs[0]]['iter'][-1]
+            for epoch in epochs:
+                iters = log_dict[epoch]['iter']
+                if log_dict[epoch]['mode'][-1] == 'val':
+                    iters = iters[:-1]
+                xs.append(
+                    np.array(iters) + (epoch - 1) * num_iters_per_epoch)
+                ys.append(np.array(log_dict[epoch][metric][:len(iters)]))
+            xs = np.concatenate(xs)
+            ys = np.concatenate(ys)
+            ys = np.concatenate(
+                [ys[:1],
+                np.convolve(ys, np.ones((3,))/3, mode='vaild'),
+                ys[-1:]])
+            font = {
+                'family' : 'Times New Roman',
+                'weight' : 'normal',
+                'size'   : 12,
+            }
+            plt.xlabel('iter', font)
+            plt.ylabel('loss', font)
+            plt.plot(
+                xs, ys, label=legend[i * num_metrics + j], linewidth=0.8)
+            plt.legend()
+        if args.title is not None:
+            plt.title(args.title)
+    if args.out is None:
+        plt.show()
+    else:
+        print('save curve to: {}'.format(args.out))
+        plt.savefig(args.out, dpi=300, bbox_inches='tight')
+        plt.cla()
+
+
+def add_plot_loss_parser(subparsers):
+    parser_plt = subparsers.add_parser(
+        'plot_loss_curve', help='parser for plotting loss curves')
+    parser_plt.add_argument(
+        'json_logs',
+        type=str,
+        nargs='+',
+        help='path of train log in json format')
+    parser_plt.add_argument(
+        '--keys',
+        type=str,
+        nargs='+',
+        default=['loss', 'rbbox_loss_cls', 'rbbox_loss_bbox'],
+        help='the metric that you want to plot')
+    parser_plt.add_argument(
+        '--title', 
+        type=str, 
+        default='Iter-Loss Curve',
+        help='title of figure')
+    parser_plt.add_argument(
+        '--legend',
+        type=str,
+        nargs='+',
+        default=None,
+        help='legend of each plot')
+    parser_plt.add_argument(
+        '--backend', type=str, default=None, help='backend of plt')
+    parser_plt.add_argument(
+        '--style', type=str, default='dark', help='style of plt')
+    parser_plt.add_argument('--out', type=str, default=None)
+
+
 def add_plot_parser(subparsers):
     parser_plt = subparsers.add_parser(
         'plot_curve', help='parser for plotting curves')
@@ -140,6 +228,7 @@ def parse_args():
     # currently only support plot curve and calculate average train time
     subparsers = parser.add_subparsers(dest='task', help='task parser')
     add_plot_parser(subparsers)
+    add_plot_loss_parser(subparsers)
     add_time_parser(subparsers)
     args = parser.parse_args()
     return args
