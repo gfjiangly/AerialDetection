@@ -6,6 +6,46 @@ from mmdet.core.evaluation.bbox_overlaps import bbox_overlaps
 from mmdet.core.mask.utils import mask_expand, mask_crop
 
 
+class MixUp(object):
+    def __init__(self, p=0.3, lambd=0.5):
+        self.lambd = lambd
+        self.p = p
+        self.img2 = None
+        self.boxes2 = None
+        self.labels2 = None
+        self.masks2 = None
+
+    def __call__(self, img1, boxes1, labels1, masks1=None):
+        if random.random() < self.p and self.img2 is not None \
+            and img1.shape[1] == self.img2.shape[1]:
+            height = max(img1.shape[0], self.img2.shape[0])
+            width = max(img1.shape[1], self.img2.shape[1])
+
+            mixup_image = np.zeros([height, width, 3], dtype='float32')
+            mixup_image[:img1.shape[0], :img1.shape[1], :] = \
+                img1.astype('float32') * self.lambd
+            mixup_image[:self.img2.shape[0], :self.img2.shape[1], :] += \
+                self.img2.astype('float32') * (1. - self.lambd)
+            mixup_image = mixup_image.astype('uint8')
+
+            mixup_boxes = np.vstack((boxes1, self.boxes2))
+            mixup_labels = np.hstack((labels1, self.labels2))
+            if masks1 is not None:
+                mixup_masks = np.vstack((masks1, self.masks2))
+        else:
+            mixup_image = img1
+            mixup_boxes = boxes1
+            mixup_labels = labels1
+            mixup_masks = masks1
+        # 更新img2信息用于mix的样本
+        self.img2 = img1
+        self.boxes2 = boxes1
+        self.labels2 = labels1
+        self.masks2 = masks1
+
+        return mixup_image, mixup_boxes, mixup_labels, mixup_masks
+
+
 class PhotoMetricDistortion(object):
 
     def __init__(self,
@@ -187,7 +227,8 @@ class ExtraAugmentation(object):
     def __init__(self,
                  photo_metric_distortion=None,
                  expand=None,
-                 random_crop=None):
+                 random_crop=None,
+                 mixup=None):
         self.transforms = []
         if photo_metric_distortion is not None:
             self.transforms.append(
@@ -196,6 +237,8 @@ class ExtraAugmentation(object):
             self.transforms.append(Expand(**expand))
         if random_crop is not None:
             self.transforms.append(RandomCrop(**random_crop))
+        if mixup is not None:
+            self.transforms.append(MixUp(**mixup))
 
     def __call__(self, img, boxes, labels, masks=None):
         img = img.astype(np.float32)
