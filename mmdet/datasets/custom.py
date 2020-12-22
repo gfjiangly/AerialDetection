@@ -249,13 +249,6 @@ class CustomDataset(Dataset):
                         # import cvtools
             # mmcv.imwrite(img, '/code/debug/AerialDetection/retinanet/color/color_' + img_info['file_name'])
                     # debug
-            import cvtools
-            from mmdet.core.bbox.transforms_rbbox import mask2poly, get_best_begin_point
-            gt_polys = get_best_begin_point(mask2poly(gt_masks))
-            img_draw = cvtools.draw_boxes_texts(img.copy(), gt_polys, box_format='polygon')
-            from cvtools.utils.path import add_prefix_filename_suffix
-            save_img_name = add_prefix_filename_suffix(img_info['file_name'], suffix='_mixup')
-            cvtools.imwrite(img_draw, '/code/debug/AerialDetection/retinanet/mixup/' + save_img_name)
 
         # rotate augmentation
         if self.rotate_aug is not None:
