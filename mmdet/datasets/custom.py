@@ -246,9 +246,6 @@ class CustomDataset(Dataset):
             # from cvtools.utils.path import add_prefix_filename_suffix
             # save_img_name = add_prefix_filename_suffix(img_info['file_name'], suffix='_expand_crop')
             # cvtools.imwrite(img_draw, '/code/debug/AerialDetection/retinanet/expand/' + save_img_name)
-                        # import cvtools
-            # mmcv.imwrite(img, '/code/debug/AerialDetection/retinanet/color/color_' + img_info['file_name'])
-                    # debug
 
         # rotate augmentation
         if self.rotate_aug is not None:

@@ -7,6 +7,7 @@ from mmdet.core.mask.utils import mask_expand, mask_crop
 
 
 class MixUp(object):
+    """暂未实现在loss上对label按mix加权"""
     def __init__(self, p=0.3, lambd=0.5):
         self.lambd = lambd
         self.p = p
@@ -122,6 +123,71 @@ class CutOut(object):
                      else f'cutout_shape={self.candidates}, ')
         repr_str += f'fill_in={self.fill_in})'
         return repr_str
+
+
+class MixCut(object):
+    """暂未实现对label的mix"""
+    def __init__(self,
+                 n_holes,
+                 cutout_shape=None,
+                 cutout_ratio=None):
+        assert (cutout_shape is None) ^ (cutout_ratio is None), \
+            'Either cutout_shape or cutout_ratio should be specified.'
+        assert (isinstance(cutout_shape, (list, tuple))
+                or isinstance(cutout_ratio, (list, tuple)))
+        if isinstance(n_holes, tuple):
+            assert len(n_holes) == 2 and 0 <= n_holes[0] < n_holes[1]
+        else:
+            n_holes = (n_holes, n_holes)
+        self.n_holes = n_holes
+        self.with_ratio = cutout_ratio is not None
+        self.candidates = cutout_ratio if self.with_ratio else cutout_shape
+        self.img2 = None
+
+    def __call__(self, img1, boxes1, labels1, masks1=None):
+        if self.img2 is not None:
+            h, w, _ = img1.shape
+            n_holes = np.random.randint(self.n_holes[0], self.n_holes[1] + 1)
+            if n_holes > len(boxes1):
+                n_holes = len(boxes1)
+            holes_idxs = random.choice(range(len(boxes1)), n_holes, replace=False)
+            for idx in holes_idxs:
+                bbox = boxes1[idx]
+                bbox_x1, bbox_y1 = bbox[0], bbox[1]
+                bbox_x2, bbox_y2 = bbox[2], bbox[3]
+                bbox_w = bbox_x2 - bbox_x1 + 1
+                bbox_h = bbox_y2 - bbox_y1 + 1
+                if bbox_x1 >= bbox_x2 or bbox_y1 >= bbox_y2:
+                    continue
+                x1 = np.random.randint(bbox_x1, bbox_x2)
+                y1 = np.random.randint(bbox_y1, bbox_y2)
+                cutout_w = random.uniform(self.candidates[0], self.candidates[1])
+                cutout_h = random.uniform(self.candidates[0], self.candidates[1])
+                if self.with_ratio:
+                    cutout_w = int(cutout_w * bbox_w)
+                    cutout_h = int(cutout_h * bbox_h)
+
+                x2 = np.clip(x1 + cutout_w, 0, w)
+                y2 = np.clip(y1 + cutout_h, 0, h)
+
+                # cut from img2
+                img2_h, img2_w = self.img2.shape[:2]
+                cut2_w, cut2_h = x2 - x1, y2 - y1
+                if cut2_w >= img2_w - cut2_w or cut2_h >= img2_h - cut2_h:
+                    continue
+                img2_x1 = np.random.randint(cut2_w, img2_w - cut2_w)
+                img2_y1 = np.random.randint(cut2_h, img2_h - cut2_h)
+                img2_cut = self.img2[img2_y1:img2_y1+cut2_h, img2_x1:img2_x1+cut2_w].copy()
+                # update img2
+                self.img2 = img1.copy()
+                try:
+                    img1[y1:y2, x1:x2, :] = img2_cut
+                except Exception as e:
+                    print(e)
+        else:
+            self.img2 = img1.copy()
+
+        return img1, boxes1, labels1, masks1
 
 
 class PhotoMetricDistortion(object):
@@ -307,7 +373,8 @@ class ExtraAugmentation(object):
                  expand=None,
                  random_crop=None,
                  mixup=None,
-                 cutout=None):
+                 cutout=None,
+                 mixcut=None):
         self.transforms = []
         if photo_metric_distortion is not None:
             self.transforms.append(
@@ -320,6 +387,8 @@ class ExtraAugmentation(object):
             self.transforms.append(MixUp(**mixup))
         if cutout is not None:
             self.transforms.append(CutOut(**cutout))
+        if mixcut is not None:
+            self.transforms.append(MixCut(**mixcut))
 
     def __call__(self, img, boxes, labels, masks=None):
         img = img.astype(np.float32)
