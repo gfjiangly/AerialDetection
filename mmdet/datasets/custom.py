@@ -191,8 +191,14 @@ class CustomDataset(Dataset):
 
     def prepare_train_img(self, idx):
         img_info = self.img_infos[idx]
-        # load image
-        img = mmcv.imread(osp.join(self.img_prefix, img_info['filename']))
+        if 'crop' in img_info:
+            img = self._read_dota_image(self.img_prefix, img_info)
+            # x1, y1, x2, y2 = img_info['crop']
+            # img_info['width'] = x2 - x1 + 1
+            # img_info['height'] = y2 - y1 + 1
+        else:
+            # load image
+            img = mmcv.imread(osp.join(self.img_prefix, img_info['filename']))
         # load proposals if necessary
         if self.proposals is not None:
             proposals = self.proposals[idx][:self.num_max_proposals]
@@ -340,7 +346,11 @@ class CustomDataset(Dataset):
     def prepare_test_img(self, idx):
         """Prepare an image for testing (multi-scale and flipping)"""
         img_info = self.img_infos[idx]
-        img = mmcv.imread(osp.join(self.img_prefix, img_info['filename']))
+        if 'crop' in img_info:
+            img = self._read_dota_image(self.img_prefix, img_info)
+        else:
+            # load image
+            img = mmcv.imread(osp.join(self.img_prefix, img_info['filename']))
         if self.proposals is not None:
             proposal = self.proposals[idx][:self.num_max_proposals]
             if not (proposal.shape[1] == 4 or proposal.shape[1] == 5):

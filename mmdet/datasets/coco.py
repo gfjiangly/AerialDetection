@@ -33,6 +33,10 @@ class CocoDataset(CustomDataset):
         for i in self.img_ids:
             info = self.coco.loadImgs([i])[0]
             info['filename'] = info['file_name']
+            if 'crop' in info:
+                x1, y1, x2, y2 = info['crop']
+                info['width'] = x2 - x1 + 1
+                info['height'] = y2 - y1 + 1
             img_infos.append(info)
         return img_infos
 

@@ -10,7 +10,7 @@ import dota_utils as util
 import re
 import time
 import polyiou
-from poly_nms_gpu.nms_wrapper import poly_nms_gpu
+# from poly_nms_gpu.nms_wrapper import poly_nms_gpu
 import pdb
 
 ## the thresh for nms when merge image
@@ -121,7 +121,7 @@ def poly2origpoly(poly, x, y, rate):
         origpoly.append(tmp_y)
     return origpoly
 
-def mergebase(srcpath, dstpath, nms):
+def mergebase(srcpath, dstpath, nms, crop_in_name=True):
     assert os.path.exists(srcpath), "The srcpath is not exists!"
     filelist = util.GetFileFromThisRootDir(srcpath)
     assert os.path.exists(dstpath), "The dstpath is not exists!"
@@ -192,15 +192,17 @@ def mergebypoly(srcpath, dstpath):
     #           poly_nms_gpu)
 if __name__ == '__main__':
 
-    start = time.clock()
-    # mergebypoly(r'/home/dingjian/data/ODAI/ODAI_submmit/baseline/task1_results',
-    #             r'/home/dingjian/data/ODAI/ODAI_submmit/baseline/task1_merge2')
-    # mergebypoly(r'/home/dingjian/Documents/Research/experiments/rotateanchorrotateregion/40_angle_agnostic',
-    #             r'/home/dingjian/Documents/Research/experiments/rotateanchorrotateregion/40_angle_agnostic_0.1_nms')
-    mergebypoly(r'/home/dingjian/Documents/Research/experiments/Deform_FPN_Naive_poly/Task1_results_epoch12',
-                r'/home/dingjian/Documents/Research/experiments/Deform_FPN_Naive_poly/Task_results_epoch12_0.1_nms')
-    # mergebyrec(r'/home/dingjian/Documents/Research/experiments/Deform_FPN_HBB/Task2_results',
-    #            r'/home/dingjian/Documents/Research/experiments/Deform_FPN_HBB/Task2_results_0.3_nms')
-    elapsed = (time.clock() - start)
-    print("Time used:", elapsed)
+    # start = time.clock()
+    # # mergebypoly(r'/home/dingjian/data/ODAI/ODAI_submmit/baseline/task1_results',
+    # #             r'/home/dingjian/data/ODAI/ODAI_submmit/baseline/task1_merge2')
+    # # mergebypoly(r'/home/dingjian/Documents/Research/experiments/rotateanchorrotateregion/40_angle_agnostic',
+    # #             r'/home/dingjian/Documents/Research/experiments/rotateanchorrotateregion/40_angle_agnostic_0.1_nms')
+    # mergebypoly('/code/AerialDetection/work_dirs/retinanet_obb_r50_fpn_1x_dota_1gpus_adapt/Task1_results',
+    #             '/code/AerialDetection/work_dirs/retinanet_obb_r50_fpn_1x_dota_1gpus_adapt/Task1_results_nms')
+    # # mergebyrec(r'/home/dingjian/Documents/Research/experiments/Deform_FPN_HBB/Task2_results',
+    # #            r'/home/dingjian/Documents/Research/experiments/Deform_FPN_HBB/Task2_results_0.3_nms')
+    # elapsed = (time.clock() - start)
+    # print("Time used:", elapsed)
     # test_nms()
+    mergebypoly('/code/AerialDetection/work_dirs/retinanet_obb_r50_fpn_1x_dota_1gpus/Task1_results',
+                '/code/AerialDetection/work_dirs/retinanet_obb_r50_fpn_1x_dota_1gpus/Task1_results_nms')

@@ -1,5 +1,9 @@
-from .coco import CocoDataset
 import numpy as np
+import os.path as osp
+import mmcv
+
+from .coco import CocoDataset
+
 
 class DOTADataset(CocoDataset):
 
@@ -11,6 +15,25 @@ class DOTADataset(CocoDataset):
                 'soccer-ball-field', 'roundabout',
                 'harbor', 'swimming-pool',
                 'helicopter')
+    
+    def _read_dota_image(self, img_prefix, img_info):
+        filename = img_info['filename']
+        crop = img_info['crop']
+        img_name = osp.splitext(filename)[0]
+        suffix = osp.splitext(filename)[1]
+
+        crop_str = '_' + '_'.join(list(map(str, crop)))
+        crop_filename = osp.join(img_prefix, 
+                                 '../../crop/', 
+                                 img_name+crop_str+suffix)
+        if not osp.isfile(crop_filename):
+            img = mmcv.imread(osp.join(img_prefix, filename))
+            sx, sy, ex, ey = crop
+            img = img[sy:ey+1, sx:ex+1]
+            mmcv.imwrite(img, crop_filename)
+        else:
+            img = mmcv.imread(crop_filename)
+        return img
 
 
 class DOTADataset_v3(CocoDataset):

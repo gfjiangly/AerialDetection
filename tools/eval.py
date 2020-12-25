@@ -204,12 +204,15 @@ def main():
                         results2json(dataset, outputs_, result_file)
                         coco_eval(result_file, eval_types, dataset.coco)
         
-        from parse_results import parse_results
-        parse_results(args.config, args.out, cfg.work_dir, 'OBB')
+        # from parse_results import parse_results
+        # parse_results(args.config, args.out, cfg.work_dir, 'OBB')
         from cvtools.evaluation.eval_dota_task1 import eval_dota_task1
         det_path = osp.join(cfg.work_dir, 'Task1_results_nms')
         ann_path = '/media/data/DOTA/val/labelTxt-v1.0/labelTxt'
         imageset_file = '/media/data/DOTA/val/val.txt'
+        from cvtools.evaluation.merge_crop_dets import CroppedDets
+        cropped_dets = CroppedDets(args.out, cfg.data.val.ann_file, num_coors=8)
+        cropped_dets.save_dota_format(det_path)
         eval_dota_task1(det_path, ann_path, imageset_file)
 
 
