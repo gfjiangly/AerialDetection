@@ -300,14 +300,9 @@ class CustomDataset(Dataset):
             gt_bboxes_ignore = self.bbox_transform(gt_bboxes_ignore, img_shape,
                                                    scale_factor, flip)
         if self.with_mask:
-            # gt_masks = self.mask_transform(ann['masks'], pad_shape,
-            #                                scale_factor, flip)
-            try:
-                gt_masks = self.mask_transform(gt_masks, pad_shape,
-                                            scale_factor, flip)
-            except Exception as e:
-                print(e)
-        
+            gt_masks = self.mask_transform(gt_masks, pad_shape,
+                                        scale_factor, flip)
+            # check masks
             polys = mask2poly(gt_masks)
             gt_masks_save = []
             gt_bboxes_save = []
