@@ -103,7 +103,7 @@ def main():
 
     # 训练完成后做一次评估
     import os.path as osp
-    checkpoint = osp.join(cfg.work_dir, 'epoch_12.pth')
+    checkpoint = osp.join(cfg.work_dir, 'latest.pth')
     out = osp.join(cfg.work_dir, 'val_cropped_dets.pkl')
     _do_dota_eval(args.config, checkpoint, out)
 

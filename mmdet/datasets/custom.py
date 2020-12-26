@@ -274,8 +274,9 @@ class CustomDataset(Dataset):
         flip = True if np.random.rand() < self.flip_ratio else False
         # randomly sample a scale
         img_scale = random_scale(self.img_scales, self.multiscale_mode)
-        # DOTA裁出来都是方形
-        img_scale = (img_scale[0], img_scale[0])
+        if len(self.img_scales) == 2:
+            # 多尺度训练时，宽高随机，DOTA裁出来都是方形
+            img_scale = (img_scale[0], img_scale[0])
         img, img_shape, pad_shape, scale_factor = self.img_transform(
             img, img_scale, flip, keep_ratio=self.resize_keep_ratio)
         img = img.copy()
@@ -301,8 +302,11 @@ class CustomDataset(Dataset):
         if self.with_mask:
             # gt_masks = self.mask_transform(ann['masks'], pad_shape,
             #                                scale_factor, flip)
-            gt_masks = self.mask_transform(gt_masks, pad_shape,
-                                           scale_factor, flip)
+            try:
+                gt_masks = self.mask_transform(gt_masks, pad_shape,
+                                            scale_factor, flip)
+            except Exception as e:
+                print(e)
         
             polys = mask2poly(gt_masks)
             gt_masks_save = []

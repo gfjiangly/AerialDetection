@@ -101,8 +101,8 @@ def parse_results(config_file, resultfile, dstpath, type):
         mergebypoly_multiprocess(os.path.join(dstpath, 'Task1_results'),
                                  os.path.join(dstpath, 'Task1_results_nms'), nms_type=r'py_cpu_nms_poly_fast', o_thresh=current_thresh)
 
-        OBB2HBB(os.path.join(dstpath, 'Task1_results_nms'),
-                         os.path.join(dstpath, 'Transed_Task2_results_nms'))
+        # OBB2HBB(os.path.join(dstpath, 'Task1_results_nms'),
+        #                  os.path.join(dstpath, 'Transed_Task2_results_nms'))
 
     if 'hbb_results_dict' in vars():
         if not os.path.exists(os.path.join(dstpath, 'Task2_results')):
