@@ -17,6 +17,9 @@ from mmdet.core import (bbox_mapping, merge_aug_proposals, merge_aug_bboxes,
                         merge_rotate_aug_bboxes, multiclass_nms_rbbox)
 import copy
 from mmdet.core import RotBox2Polys, polygonToRotRectangle_batch
+from mmdet.models.plugins.mdanet import MDANet
+
+
 @DETECTORS.register_module
 class RoITransformer(BaseDetectorNew, RPNTestMixin):
 
@@ -32,6 +35,7 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
                  rbbox_head=None,
                  mask_roi_extractor=None,
                  mask_head=None,
+                 mda_head=None,
                  train_cfg=None,
                  test_cfg=None,
                  pretrained=None):
@@ -76,7 +80,10 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
                 self.share_roi_extractor = True
                 self.mask_roi_extractor = self.rbbox_roi_extractor
             self.mask_head = builder.build_head(mask_head)
-
+        
+        if mda_head is not None:
+            self.mda_head = MDANet(256)
+            
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
 
@@ -85,6 +92,10 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
     @property
     def with_rpn(self):
         return hasattr(self, 'rpn_head') and self.rpn_head is not None
+    
+    @property
+    def with_mda(self):
+        return hasattr(self, 'mda_head') and self.mda_head is not None
 
     def init_weights(self, pretrained=None):
         super(RoITransformer, self).init_weights(pretrained)
@@ -242,6 +253,11 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
             loss_rbbox = self.rbbox_head.loss(cls_score, rbbox_pred, *rbbox_targets)
             for name, value in loss_rbbox.items():
                 losses['s{}.{}'.format(1, name)] = (value)
+        
+        if self.with_mda:
+            mda_outs = self.mda_head(x)
+            loss_mda = self.mda_head.loss(gt_masks, gt_labels)
+            losses.update(loss_mda)
 
         return losses
 

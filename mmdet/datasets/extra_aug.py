@@ -197,15 +197,21 @@ class PhotoMetricDistortion(object):
                  contrast_range=(0.5, 1.5),
                  saturation_range=(0.5, 1.5),
                  hue_delta=18,
-                 color_choose=0):
+                 color_choose=0,
+                 gray_p=0.3):
         self.brightness_delta = brightness_delta
         self.contrast_lower, self.contrast_upper = contrast_range
         self.saturation_lower, self.saturation_upper = saturation_range
         self.hue_delta = hue_delta
         self.color_choose = color_choose
+        self.gray_p = gray_p
 
     def __call__(self, img, boxes, labels, masks=None):
         if self.color_choose == 0:
+            if random.uniform() < self.gray_p:
+                gray = mmcv.bgr2gray(img)
+                img = mmcv.gray2bgr(gray)
+                return img, boxes, labels, masks
             # random brightness
             if random.randint(2):
                 delta = random.uniform(-self.brightness_delta,

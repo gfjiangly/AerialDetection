@@ -303,20 +303,20 @@ class CustomDataset(Dataset):
             gt_masks = self.mask_transform(gt_masks, pad_shape,
                                         scale_factor, flip)
             # check masks
-            polys = mask2poly(gt_masks)
-            gt_masks_save = []
-            gt_bboxes_save = []
-            gt_labels_save = []
-            for i in range(len(polys)):
-                if len(polys[i]) > 0:
-                    gt_masks_save.append(gt_masks[i])
-                    gt_bboxes_save.append(gt_bboxes[i])
-                    gt_labels_save.append(gt_labels[i])
-            gt_masks = gt_masks_save
-            gt_bboxes = np.array(gt_bboxes_save)
-            gt_labels = np.array(gt_labels_save)
-            if len(gt_bboxes_save) == 0:
-                return None
+            # polys = mask2poly(gt_masks)
+            # gt_masks_save = []
+            # gt_bboxes_save = []
+            # gt_labels_save = []
+            # for i in range(len(polys)):
+            #     if len(polys[i]) > 0:
+            #         gt_masks_save.append(gt_masks[i])
+            #         gt_bboxes_save.append(gt_bboxes[i])
+            #         gt_labels_save.append(gt_labels[i])
+            # gt_masks = gt_masks_save
+            # gt_bboxes = np.array(gt_bboxes_save)
+            # gt_labels = np.array(gt_labels_save)
+            # if len(gt_bboxes_save) == 0:
+            #     return None
 
         ori_shape = (img_info['height'], img_info['width'], 3)
         img_meta = dict(
