@@ -4,6 +4,7 @@ import cvtools
 import cv2.cv2 as cv
 import numpy as np
 import torch
+import mmcv
 
 from ..builder import build_loss
 
@@ -83,12 +84,14 @@ class MDANet(nn.Module):
     def __init__(self, 
                  channel, 
                  stages=(True, True, False, False, False),
+                 mask_scale=0.25,
                  loss_mask=dict(
                      type='CrossEntropyLoss', use_mask=True, loss_weight=1.0)):
         super(MDANet, self).__init__()
         self.se_block = SEBlock(channel)
         self.inception_attention = InceptionAttention()
         self.stages = stages
+        self.mask_scale = mask_scale
         self.loss_mask = build_loss(loss_mask)
         self.pa_mask = []
     
@@ -117,12 +120,18 @@ class MDANet(nn.Module):
         for i, masks in enumerate(gt_masks):
             # for j, mask in enumerate(masks):
             #     cv.imwrite('/code/AerialDetection/work_dirs/mask_{}_{}.jpg'.format(i, j), mask*255)
-            new_masks = np.sum(masks, axis=0)
+            new_masks = np.sum(masks, axis=0).astype(np.float)
+            # new_masks = cv.resize(new_masks, self.mask_shape)
+            new_masks = mmcv.imrescale(new_masks, self.mask_scale)
+            new_masks[new_masks >= 0.5] = 1.
+            new_masks[new_masks < 0.5] = 0.
             img_masks.append(new_masks)
             # cv.imwrite('/code/AerialDetection/work_dirs/new_mask_{}.jpg'.format(i), new_masks*255)
-        img_masks = np.stack(img_masks).astype(np.uint8)
+        img_masks = np.stack(img_masks)
         # img_masks = img_masks[:, :, :, np.newaxis]
         mask_targets = torch.from_numpy(img_masks).float().to(device)
+        # one = torch.ones_like(mask_targets)
+        # mask_targets = np.where(mask_targets > 1, one, mask_targets)
         return mask_targets
 
     def loss(self, gt_masks, labels):
@@ -132,7 +141,7 @@ class MDANet(nn.Module):
         for out in self.pa_mask:
             mda_out = F.interpolate(
                 out, size=mask_targets.shape[-2:], 
-                mode='bilinear', align_corners = False)
+                mode='bilinear', align_corners=False)
             mask_pred.append(mda_out)
         mask_targets = torch.unsqueeze(mask_targets, dim=1)
         mask_targets = mask_targets.repeat((len(mask_pred), 2, 1, 1))
