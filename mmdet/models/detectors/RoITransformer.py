@@ -82,7 +82,7 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
             self.mask_head = builder.build_head(mask_head)
         
         if mda_head is not None:
-            self.mda_head = MDANet(256)
+            self.mda_head = builder.build_head(mda_head)
             
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg

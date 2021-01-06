@@ -7,6 +7,7 @@ import torch
 import mmcv
 
 from ..builder import build_loss
+from ..registry import HEADS
 
 
 class SEBlock(nn.Module):
@@ -80,19 +81,17 @@ class InceptionAttention(nn.Module):
         return x
 
 
+@HEADS.register_module
 class MDANet(nn.Module):
     def __init__(self, 
-                 channel, 
+                 channels, 
                  stages=(True, True, False, False, False),
-                 mask_scale=0.25,
-                 loss_mask=dict(
-                     type='CrossEntropyLoss', use_mask=True, loss_weight=1.0)):
+                 mask_scale=0.25):
         super(MDANet, self).__init__()
-        self.se_block = SEBlock(channel)
+        self.se_block = SEBlock(channels)
         self.inception_attention = InceptionAttention()
         self.stages = stages
         self.mask_scale = mask_scale
-        self.loss_mask = build_loss(loss_mask)
         self.pa_mask = []
     
     def init_weights(self):
