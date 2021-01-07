@@ -81,7 +81,9 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
                 self.mask_roi_extractor = self.rbbox_roi_extractor
             self.mask_head = builder.build_head(mask_head)
         
+        self.before_fpn = False
         if mda_head is not None:
+            self.before_fpn = mda_head.before_fpn
             self.mda_head = builder.build_head(mda_head)
             
         self.train_cfg = train_cfg
@@ -125,9 +127,11 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
 
     def extract_feat(self, img):
         x = self.backbone(img)
+        if self.with_mda and self.before_fpn:
+            x = self.mda_head(x)
         if self.with_neck:
             x = self.neck(x)
-        if self.with_mda:
+        if self.with_mda and not self.before_fpn:
             x = self.mda_head(x)
         return x
 

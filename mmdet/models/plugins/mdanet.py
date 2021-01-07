@@ -5,8 +5,9 @@ import cv2.cv2 as cv
 import numpy as np
 import torch
 import mmcv
+import copy
 
-from ..builder import build_loss
+from ..builder import build
 from ..registry import HEADS
 
 
@@ -32,7 +33,7 @@ class Inception(nn.Module):
     def __init__(self, in_c, c1, c2, c3, c4):
         super(Inception, self).__init__()
         self.p1 = nn.Sequential(
-            nn.Conv2d(in_c, c1, kernel_size=1),
+            nn.Conv2d(in_c, c1[0], kernel_size=1),
             nn.ReLU()
         )  
         self.p2 = nn.Sequential(
@@ -57,7 +58,7 @@ class Inception(nn.Module):
         )
         self.p4 = nn.Sequential(
             nn.MaxPool2d(kernel_size=3, stride=1, padding=1),
-            nn.Conv2d(in_c, c4, kernel_size=1),
+            nn.Conv2d(in_c, c4[0], kernel_size=1),
             nn.ReLU()
         )
     def forward(self, x):
@@ -69,11 +70,13 @@ class Inception(nn.Module):
 
 
 class InceptionAttention(nn.Module):
-    def __init__(self):
+    def __init__(self, in_c, c1, c2, c3, c4):
         super(InceptionAttention, self).__init__()
-        self.inception = Inception(
-            in_c=256, c1=384, c2=(192,224,256), c3=(192,224,256), c4=128)
-        self.conv = nn.Conv2d(1024, 2, kernel_size=3, padding=1)
+        # self.inception = Inception(
+        #     in_c=256, c1=384, c2=(192,224,256), c3=(192,224,256), c4=128)
+        self.inception = Inception(in_c, c1, c2, c3, c4)
+        out_channels = c1[0] + c2[-1] + c3[-1] + c4[0]
+        self.conv = nn.Conv2d(out_channels, 2, kernel_size=3, padding=1)
 
     def forward(self, x):
         x = self.inception(x)
@@ -83,16 +86,34 @@ class InceptionAttention(nn.Module):
 
 @HEADS.register_module
 class MDANet(nn.Module):
-    def __init__(self, 
-                 channels, 
-                 stages=(True, True, False, False, False),
+    def __init__(self,
+                 before_fpn=False, 
+                 in_channels=(256, 256, 256, 256, 256), 
+                 stages=(True, True, True, True, True),
+                 inception_channels=dict(
+                     c1=384, c2=(192,224,256), 
+                     c3=(192,224,256), c4=128),
                  mask_scale=0.25):
         super(MDANet, self).__init__()
-        self.se_block = SEBlock(channels)
-        self.inception_attention = InceptionAttention()
         self.stages = stages
         self.mask_scale = mask_scale
         self.pa_mask = []
+        self.inception_attentions = nn.ModuleList()
+        self.se_blocks = nn.ModuleList()
+        for i, with_mda in enumerate(self.stages):
+            if with_mda:
+                chs = copy.deepcopy(inception_channels)
+                if before_fpn:
+                    for c, v in inception_channels.items():
+                        chs[c] = tuple([k * (i + 1) for k in v])
+                inception = InceptionAttention(
+                    in_c=in_channels[i], **chs)
+                senet = SEBlock(in_channels[i])
+                self.inception_attentions.append(inception)
+                self.se_blocks.append(senet)
+            else:
+                self.inception_attentions.append(None)
+                self.se_blocks.append(None)
     
     def init_weights(self):
         pass
@@ -102,10 +123,10 @@ class MDANet(nn.Module):
         outs = []
         for i, with_mda in enumerate(self.stages):
             if with_mda:
-                pa_mask = self.inception_attention(x[i])
+                pa_mask = self.inception_attentions[i](x[i])
                 pa_mask_softmax = F.softmax(pa_mask, dim=1)
                 pa = pa_mask_softmax[:, [0], :, :]
-                ca = self.se_block(x[i])
+                ca = self.se_blocks[i](x[i])
                 out = pa.mul(x[i])
                 out *= ca
                 self.pa_mask.append(pa_mask)
