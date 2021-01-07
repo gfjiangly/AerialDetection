@@ -127,6 +127,8 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
         x = self.backbone(img)
         if self.with_neck:
             x = self.neck(x)
+        if self.with_mda:
+            x = self.mda_head(x)
         return x
 
     def forward_train(self,
@@ -255,7 +257,6 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
                 losses['s{}.{}'.format(1, name)] = (value)
         
         if self.with_mda:
-            mda_outs = self.mda_head(x)
             loss_mda = self.mda_head.loss(gt_masks, gt_labels)
             losses.update(loss_mda)
 
