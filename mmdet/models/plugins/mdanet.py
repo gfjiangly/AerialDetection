@@ -163,11 +163,16 @@ class MDANet(nn.Module):
                 out, size=mask_targets.shape[-2:], 
                 mode='bilinear', align_corners=False)
             mask_pred.append(mda_out)
-        mask_targets = torch.unsqueeze(mask_targets, dim=1)
-        mask_targets = mask_targets.repeat((len(mask_pred), 2, 1, 1))
+        # mask_targets = torch.unsqueeze(mask_targets, dim=1)
+        mask_targets = mask_targets.repeat((len(mask_pred), 1, 1))
         mask_pred = torch.cat(mask_pred, dim=0)
-        # mask_targets = torch.reshape(mask_targets, [-1, ])
+        # mask_targets = torch.reshape(mask_targets, [-1, 1])
         # mask_pred = torch.reshape(mask_pred, [-1, 2])
-        loss_mask = F.binary_cross_entropy_with_logits(
-            mask_pred, mask_targets, reduction='mean')[None]
+        # loss = nn.BCEWithLogitsLoss()
+        # loss_mask = loss(mask_pred, mask_targets)
+        # loss_mask = F.binary_cross_entropy_with_logits(
+        #     mask_pred, mask_targets, reduction='mean')[None]
+        loss2 = nn.CrossEntropyLoss()
+        mask_targets = mask_targets.long()
+        loss_mask = loss2(mask_pred, mask_targets)
         return dict(loss_mask=loss_mask)
