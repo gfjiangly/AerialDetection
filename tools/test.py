@@ -2,6 +2,7 @@ import argparse
 import os.path as osp
 import shutil
 import tempfile
+import time
 
 import mmcv
 import torch
@@ -13,7 +14,7 @@ from mmdet.apis import init_dist
 from mmdet.core import results2json, coco_eval
 from mmdet.datasets import build_dataloader, get_dataset
 from mmdet.models import build_detector
-import time
+
 
 def get_time_str():
     return time.strftime('%Y%m%d_%H%M%S', time.localtime())
@@ -184,6 +185,10 @@ def main():
     if args.out and rank == 0:
         print('\nwriting results to {}'.format(args.out))
         mmcv.dump(outputs, args.out)
+        
+        from parse_results import parse_results
+        parse_results(args.config, args.out, cfg.work_dir, 'OBB')
+
         eval_types = args.eval
         if eval_types:
             print('Starting evaluate {}'.format(' and '.join(eval_types)))

@@ -59,8 +59,9 @@ def OBB2HBB(srcpath, dstpath):
 def parse_results(config_file, resultfile, dstpath, type):
     cfg = Config.fromfile(config_file)
     
-    cfg.data.val.test_mode = True
-    data_test = cfg.data['val']
+    # cfg.data.val.test_mode = True
+    # data_test = cfg.data['val']
+    data_test = cfg.data['test']
     dataset = get_dataset(data_test)
     outputs = mmcv.load(resultfile)
     if type == 'OBB':
@@ -124,7 +125,7 @@ if __name__ == '__main__':
     args = parse_args()
     config_file = args.config
     config_name = os.path.splitext(os.path.basename(config_file))[0]
-    pkl_file = os.path.join('work_dirs', config_name, 'val_cropped_dets.pkl')
+    pkl_file = os.path.join('work_dirs', config_name, 'test1024_dets.pkl')
     output_path = os.path.join('work_dirs', config_name)
     type = args.type
     parse_results(config_file, pkl_file, output_path, type)
