@@ -83,7 +83,7 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
         
         self.before_fpn = False
         if mda_head is not None:
-            self.before_fpn = mda_head.before_fpn
+            # self.before_fpn = mda_head.before_fpn
             self.mda_head = builder.build_head(mda_head)
             
         self.train_cfg = train_cfg
@@ -142,6 +142,7 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
                       gt_labels,
                       gt_bboxes_ignore=None,
                       gt_masks=None,
+                      mask_polys=None,
                       proposals=None):
         x = self.extract_feat(img)
 
@@ -261,7 +262,7 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
                 losses['s{}.{}'.format(1, name)] = (value)
         
         if self.with_mda:
-            loss_mda = self.mda_head.loss(gt_masks, gt_labels)
+            loss_mda = self.mda_head.loss(mask_polys, gt_labels)
             losses.update(loss_mda)
 
         return losses

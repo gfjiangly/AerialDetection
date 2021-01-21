@@ -338,6 +338,7 @@ class CustomDataset(Dataset):
             data['gt_bboxes_ignore'] = DC(to_tensor(gt_bboxes_ignore))
         if self.with_mask:
             data['gt_masks'] = DC(gt_masks, cpu_only=True)
+            data['mask_polys'] = DC(ann['mask_polys'], cpu_only=True)
         if self.with_seg:
             data['gt_semantic_seg'] = DC(to_tensor(gt_seg), stack=True)
         return data
