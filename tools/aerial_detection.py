@@ -139,7 +139,7 @@ class AerialDetectionOBB(object):
         texts = [self.model.CLASSES[index]+'|'+str(round(bbox[-1], 2))
                  for index, bbox in zip(labels, bboxes)]
         img = cvtools.draw_boxes_texts(
-            img, bboxes[:, :-1], texts, box_format='polygon')
+            img, bboxes[:, :-1], box_format='polygon', line_width=2)
         cvtools.imwrite(img, to_file)
     
     def vis_feats(self, modules_for_plot):
@@ -165,9 +165,9 @@ class AerialDetectionOBB(object):
 
 
 if __name__ == '__main__':
-    config_file = 'configs/DOTA/faster_rcnn_RoITrans_r50_fpn_1x_dota_1gpus_mdanet_binary.py'
-    pth_file = 'work_dirs/faster_rcnn_RoITrans_r50_fpn_1x_dota_1gpus_mdanet_binary/epoch_12.pth'
+    config_file = 'configs/DOTA/faster_rcnn_RoITrans_r50_fpn_1x_dota_1gpus_train_mdanet_binary.py'
+    pth_file = 'work_dirs/faster_rcnn_RoITrans_r50_fpn_1x_dota_1gpus_train_mdanet_binary/epoch_12.pth'
     detector = AerialDetectionOBB(config_file, pth_file)
     detector('/media/data/DOTA/crop/P2701_2926_1597_3949_2620.png', vis=True, 
-             save_root='work_dirs/attention_vis/')
-    detector.save_results('work_dirs/faster_rcnn_RoITrans_r50_fpn_1x_dota_1gpus_mdanet_binary/detect_result.txt')
+             save_root='work_dirs/attention_vis/', vis_thr=0.6)
+    detector.save_results('work_dirs/faster_rcnn_RoITrans_r50_fpn_1x_dota_1gpus_train_mdanet_binary/detect_result.txt')

@@ -9,7 +9,7 @@ from .recall import eval_recalls
 def coco_eval(result_file, result_types, coco, max_dets=(100, 300, 1000)):
     for res_type in result_types:
         assert res_type in [
-            'proposal', 'proposal_fast', 'bbox', 'segm', 'keypoints'
+            'proposal', 'proposal_fast', 'hbb', 'obb', 'segm', 'keypoints'
         ]
 
     if mmcv.is_str(coco):
@@ -100,7 +100,7 @@ def proposal2json(dataset, results):
     return json_results
 
 
-def det2json(dataset, results):
+def det2json(dataset, results, box_type='hbb'):
     json_results = []
     for idx in range(len(dataset)):
         img_id = dataset.img_ids[idx]
@@ -110,8 +110,13 @@ def det2json(dataset, results):
             for i in range(bboxes.shape[0]):
                 data = dict()
                 data['image_id'] = img_id
-                data['bbox'] = xyxy2xywh(bboxes[i])
-                data['score'] = float(bboxes[i][4])
+                if box_type == 'hbb':
+                    data['bbox'] = xyxy2xywh(bboxes[i])
+                elif box_type == 'obb':
+                    data['bbox'] = bboxes[i][:-1].tolist()
+                else:
+                    raise ValueError
+                data['score'] = float(bboxes[i][-1])
                 data['category_id'] = dataset.cat_ids[label]
                 json_results.append(data)
     return json_results
@@ -137,9 +142,9 @@ def segm2json(dataset, results):
     return json_results
 
 
-def results2json(dataset, results, out_file):
+def results2json(dataset, results, out_file, box_type='hbb'):
     if isinstance(results[0], list):
-        json_results = det2json(dataset, results)
+        json_results = det2json(dataset, results, box_type)
     elif isinstance(results[0], tuple):
         json_results = segm2json(dataset, results)
     elif isinstance(results[0], np.ndarray):
