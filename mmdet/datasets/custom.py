@@ -199,6 +199,7 @@ class CustomDataset(Dataset):
         else:
             # load image
             img = mmcv.imread(osp.join(self.img_prefix, img_info['filename']))
+        # mmcv.imwrite(img, '/code/AerialDetection/work_dirs/attention_vis/{}.jpg'.format(img_info['filename']))
         # load proposals if necessary
         if self.proposals is not None:
             proposals = self.proposals[idx][:self.num_max_proposals]

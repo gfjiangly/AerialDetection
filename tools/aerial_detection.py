@@ -165,9 +165,9 @@ class AerialDetectionOBB(object):
 
 
 if __name__ == '__main__':
-    config_file = 'configs/DOTA/faster_rcnn_RoITrans_r50_fpn_1x_dota_1gpus_mdanet_binary.py'
-    pth_file = 'work_dirs/faster_rcnn_RoITrans_r50_fpn_1x_dota_1gpus_mdanet_binary/epoch_12.pth'
+    config_file = 'configs/DOTA/faster_rcnn_RoITrans_r50_fpn_1x_dota_1gpus_mdanet2.py'
+    pth_file = 'work_dirs/faster_rcnn_RoITrans_r50_fpn_1x_dota_1gpus_mdanet2/epoch_12.pth'
     detector = AerialDetectionOBB(config_file, pth_file)
     detector('/media/data/DOTA/crop/P2701_2926_1597_3949_2620.png', vis=True, 
              save_root='work_dirs/attention_vis/')
-    detector.save_results('work_dirs/faster_rcnn_RoITrans_r50_fpn_1x_dota_1gpus_mdanet_binary/detect_result.txt')
+    detector.save_results('work_dirs/faster_rcnn_RoITrans_r50_fpn_1x_dota_1gpus_mdanet2/detect_result.txt')

@@ -114,3 +114,4 @@ trash/
 work_dirs/
 configs/DOTA/
 configs/DOTA1_5/
+attention_vis/*

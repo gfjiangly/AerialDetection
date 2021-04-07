@@ -5,9 +5,12 @@ import torch.nn.functional as F
 from mmdet.core import delta2dbbox, multiclass_nms_rbbox, \
     bbox_target_rbbox, accuracy, rbbox_target_rbbox,\
     choose_best_Rroi_batch, delta2dbbox_v2, \
-    Pesudomulticlass_nms_rbbox, delta2dbbox_v3, hbb2obb_v2
+    Pesudomulticlass_nms_rbbox, delta2dbbox_v3, hbb2obb_v2, \
+    bbox_target_ori_rbbox
 from ..builder import build_loss
 from ..registry import HEADS
+
+from mmdet.ops.piou_loss.pixel_weights import PIoU
 
 
 @HEADS.register_module
@@ -118,6 +121,23 @@ class BBoxHeadRbbox(nn.Module):
             target_stds=self.target_stds,
             with_module=self.with_module,
             hbb_trans=self.hbb_trans)
+        return cls_reg_targets
+    
+    def get_ori_target_rbbox(self, sampling_results, gt_masks):
+        pos_proposals = [res.pos_bboxes for res in sampling_results]
+        neg_proposals = [res.neg_bboxes for res in sampling_results]
+        # pos_gt_bboxes = [res.pos_gt_bboxes for res in sampling_results]
+        # TODO: first get indexs of pos_gt_bboxes, then index from gt_bboxes
+        # TODO: refactor it, direct use the gt_rbboxes instead of gt_masks
+        pos_assigned_gt_inds = [
+            res.pos_assigned_gt_inds  for res in sampling_results
+        ]
+        cls_reg_targets = bbox_target_ori_rbbox(
+            pos_proposals,
+            neg_proposals,
+            pos_assigned_gt_inds,
+            gt_masks,
+            with_module=self.with_module)
         return cls_reg_targets
 
     def get_target_rbbox(self, sampling_results, gt_bboxes, gt_labels,
@@ -233,6 +253,16 @@ class BBoxHeadRbbox(nn.Module):
         # det_bboxes = torch.from_numpy(det_bboxes).to(c_device)
         # det_labels = torch.from_numpy(det_labels).to(c_device)
         return det_bboxes, det_labels
+    
+    def get_ori_rbboxes(self,
+                         rois,
+                         delta_rbboxes,
+                         img_shape):
+        # ori_rbboxes = delta2dbbox_v2(rois, delta_rbboxes, self.target_means,
+        #                            self.target_stds, img_shape)
+        ori_rbboxes = delta2dbbox_v3(rois[:, 1:], delta_rbboxes, self.target_means,
+                                     self.target_stds, img_shape)
+        return ori_rbboxes
 
     def get_det_rbboxes(self,
                        rrois,

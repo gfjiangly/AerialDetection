@@ -90,19 +90,20 @@ class InceptionAttention(nn.Module):
 
 
 class MaskAttention(nn.Module):
-    def __init__(self, num_layer, channels, binary_mask=True, class_num=2):
+    def __init__(self, num_layer, channels, 
+                 binary_mask=True, class_num=2, sigmod_on_dot=True):
         super(MaskAttention, self).__init__()
         self.num_layer = num_layer
         self.channels = channels
+        self.sigmod_on_dot = sigmod_on_dot
         self.conv1 = nn.Sequential()
         self.enrich_semantics_supervised()
         last_dim = 2 if binary_mask else class_num + 1
         self.mask = nn.Conv2d(self.channels, last_dim, kernel_size=1)
-        self.dot_layer = nn.Sequential(
-            nn.Conv2d(self.channels, 256, kernel_size=1),
-            nn.Sigmoid()
-        )
-    
+        self.dot_layer = nn.Conv2d(self.channels, 256, kernel_size=1)
+        if sigmod_on_dot:
+            self.sigmoid = nn.Sigmoid()
+
     def enrich_semantics_supervised(self,):
         for i in range(self.num_layer-1):
             self.conv1.add_module(
@@ -119,6 +120,8 @@ class MaskAttention(nn.Module):
         G = self.conv1(x)
         mask = self.mask(G)
         dot_layer = self.dot_layer(G)
+        if self.sigmod_on_dot:
+            dot_layer = self.sigmoid(dot_layer)
         return G, mask, dot_layer
 
 
@@ -248,6 +251,7 @@ class MDANet2(nn.Module):
                  num_layer=(4, 4, 4, 4, 4),
                  binary_mask=True,
                  class_num=2,
+                 sigmod_on_dot=False,
                  mask_loss_weight=0.1):
         super(MDANet2, self).__init__()
         self.stages = stages
@@ -258,7 +262,8 @@ class MDANet2(nn.Module):
         for i, with_mda in enumerate(self.stages):
             if with_mda:
                 mask_attention = MaskAttention(
-                    num_layer[i], 256, binary_mask, class_num)
+                    num_layer[i], 256, binary_mask, class_num, 
+                    sigmod_on_dot)
                 self.mask_attentions.append(mask_attention)
             else:
                 self.mask_attentions.append(None)
@@ -275,8 +280,14 @@ class MDANet2(nn.Module):
                 out = dot_layer.mul(x[i])
                 outs.append(out)
                 self.mask_list.append(mask)
+                # if i == 0:
+                #     self.add_heatmap(G, f'mdanet2_G_{i}')
+                #     self.add_heatmap(mask, f'mdanet2_mask_{i}')
+                #     self.add_heatmap(dot_layer, f'mdanet2_dot_layer_{i}')
+                #     self.add_heatmap(out, f'mdanet2_out_{i}')
             else:
                 outs.append(x[i])
+                self.mask_list.append(None)
         return outs
 
     def get_target(self, gt_polys, gt_labels, mask_shape, scale, device):
@@ -290,10 +301,10 @@ class MDANet2(nn.Module):
                 new_box = np.int0(poly).reshape([4, 2])
                 color = int(labels[j])
                 cv.fillConvexPoly(mask, new_box, color=color)
-            # for j, mask in enumerate(masks):
-            #     cv.imwrite('/code/AerialDetection/work_dirs/mask_{}_{}.jpg'.format(i, j), mask*255)
             img_masks.append(mask)
-            # cv.imwrite('/code/AerialDetection/work_dirs/new_mask_{}.jpg'.format(i), new_masks*255)
+            # mask[mask > 0 ] = 255
+            # cv.imwrite('/code/AerialDetection/work_dirs/attention_vis/mask_{}.jpg'.format(i), mask)
+            # mask[mask > 0 ] = 1
         img_masks = np.stack(img_masks)
         if self.binary_mask:
             img_masks[img_masks > 0 ] = 1
@@ -305,12 +316,32 @@ class MDANet2(nn.Module):
         loss = nn.CrossEntropyLoss()
         loss_mask = 0.
         device = self.mask_list[0].device
-        for i, out in enumerate(self.mask_list):
-            mask_shape = tuple(out.shape[-2:])
-            scale = 1. / pow(2, i+2)
-            mask_target = self.get_target(
-                gt_polys, labels, mask_shape, scale, device)
-            mask_target = mask_target.long()
-            loss_mask += loss(self.mask_list[i], mask_target)
+        for i, with_mda in enumerate(self.stages):
+            if with_mda:
+                mask_shape = tuple(self.mask_list[i].shape[-2:])
+                scale = 1. / pow(2, i+2)
+                mask_target = self.get_target(
+                    gt_polys, labels, mask_shape, scale, device)
+                mask_target = mask_target.long()
+                loss_mask += loss(self.mask_list[i], mask_target)
         loss_mask *= self.mask_loss_weight
         return dict(loss_mask=loss_mask)
+
+    # def add_heatmap(self, feature_maps, name):
+    #     """
+    #     :param feature_maps:[B, C, H, W]
+    #     :return:
+    #     """
+    #     def figure_attention(activation):
+    #         fig, ax = plt.subplots()
+    #         im = ax.imshow(activation, cmap='jet')
+    #         fig.colorbar(im)
+    #         return fig
+
+    #     heatmap = torch.sum(feature_maps, dim=1)
+    #     fig = figure_attention(heatmap.detach().cpu().numpy()[0, :])
+    #     fig.savefig(f'work_dirs/attention_vis/{name}.jpg', 
+    #             bbox_inches='tight',
+    #             pad_inches=0,
+    #             transparent=True,
+    #             dpi=300)

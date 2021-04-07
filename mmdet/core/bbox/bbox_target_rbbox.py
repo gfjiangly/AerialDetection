@@ -121,6 +121,55 @@ def bbox_target_rbbox_single(pos_bboxes,
 
     return labels, label_weights, bbox_targets, bbox_weights
 
+
+def bbox_target_ori_rbbox(pos_bboxes_list,
+                          neg_bboxes_list,
+                          pos_assigned_gt_inds_list,
+                          gt_masks_list,
+                          with_module=True,
+                          concat=True):
+    bbox_targets, bbox_weights = multi_apply(
+        bbox_target_ori_rbbox_single,
+        pos_bboxes_list,
+        neg_bboxes_list,
+        pos_assigned_gt_inds_list,
+        gt_masks_list)
+    if concat:
+        bbox_targets = torch.cat(bbox_targets, 0)
+        bbox_weights = torch.cat(bbox_weights, 0)
+    return bbox_targets, bbox_weights
+
+
+def bbox_target_ori_rbbox_single(pos_bboxes,
+                                 neg_bboxes,
+                                 pos_assigned_gt_inds,
+                                 gt_masks,
+                                 with_module=True):
+    """
+
+    :param pos_bboxes: Tensor, shape (n, 4)
+    :param neg_bboxes: Tensor, shape (m, 4)
+    :param pos_assigned_gt_inds: Tensor, shape (n)
+    :param gt_masks: numpy.ndarray, shape (n, 1024, 1024)
+    :return:
+    """
+    num_pos = pos_bboxes.size(0)
+    num_neg = neg_bboxes.size(0)
+    num_samples = num_pos + num_neg
+    bbox_weights = pos_bboxes.new_zeros(num_samples, 5)
+    bbox_targets = pos_bboxes.new_zeros(num_samples, 5)
+    pos_gt_masks = gt_masks[pos_assigned_gt_inds.cpu().numpy()]
+    # TODO: optimizer it
+    pos_gt_polys = mask2poly(pos_gt_masks)
+    pos_gt_bp_polys = get_best_begin_point(pos_gt_polys)
+    # TODO optimizer it
+    pos_gt_obbs = torch.from_numpy(polygonToRotRectangle_batch(pos_gt_bp_polys, with_module)).to(pos_bboxes.device)
+    if num_pos > 0:
+        bbox_targets[:num_pos, :] = pos_gt_obbs
+        bbox_weights[:num_pos, :] = 1
+    return bbox_targets, bbox_weights
+
+
 def rbbox_target_rbbox(pos_rbboxes_list,
                          neg_rbboxes_list,
                          pos_gt_rbboxes_list,
