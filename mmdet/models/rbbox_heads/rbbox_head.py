@@ -6,7 +6,7 @@ from mmdet.core import delta2dbbox, multiclass_nms_rbbox, \
     bbox_target_rbbox, accuracy, rbbox_target_rbbox,\
     choose_best_Rroi_batch, delta2dbbox_v2, \
     Pesudomulticlass_nms_rbbox, delta2dbbox_v3, hbb2obb_v2, \
-    bbox_target_ori_rbbox
+    bbox_ori_target_rbbox, rbbox_ori_target_rbbox
 from ..builder import build_loss
 from ..registry import HEADS
 
@@ -123,7 +123,7 @@ class BBoxHeadRbbox(nn.Module):
             hbb_trans=self.hbb_trans)
         return cls_reg_targets
     
-    def get_ori_target_rbbox(self, sampling_results, gt_masks):
+    def get_ori_target(self, sampling_results, gt_masks):
         pos_proposals = [res.pos_bboxes for res in sampling_results]
         neg_proposals = [res.neg_bboxes for res in sampling_results]
         # pos_gt_bboxes = [res.pos_gt_bboxes for res in sampling_results]
@@ -132,7 +132,7 @@ class BBoxHeadRbbox(nn.Module):
         pos_assigned_gt_inds = [
             res.pos_assigned_gt_inds  for res in sampling_results
         ]
-        cls_reg_targets = bbox_target_ori_rbbox(
+        cls_reg_targets = bbox_ori_target_rbbox(
             pos_proposals,
             neg_proposals,
             pos_assigned_gt_inds,
@@ -165,6 +165,27 @@ class BBoxHeadRbbox(nn.Module):
             reg_classes,
             target_means=self.target_means,
             target_stds=self.target_stds)
+        return cls_reg_targets
+
+    def get_ori_target_rbbox(self, sampling_results, gt_bboxes):
+        """
+        obb target obb
+        :param sampling_results:
+        :param gt_bboxes:
+        :param gt_labels:
+        :param rcnn_train_cfg:
+        :return:
+        """
+        pos_proposals = [res.pos_bboxes for res in sampling_results]
+        # pos_proposals = choose_best_Rroi_batch(pos_proposals)
+        neg_proposals = [res.neg_bboxes for res in sampling_results]
+        pos_gt_bboxes = [res.pos_gt_bboxes for res in sampling_results]
+        reg_classes = 1 if self.reg_class_agnostic else self.num_classes
+        cls_reg_targets = rbbox_ori_target_rbbox(
+            pos_proposals,
+            neg_proposals,
+            pos_gt_bboxes,
+            reg_classes)
         return cls_reg_targets
 
     def loss(self,
@@ -257,11 +278,14 @@ class BBoxHeadRbbox(nn.Module):
     def get_ori_rbboxes(self,
                          rois,
                          delta_rbboxes,
-                         img_shape):
-        # ori_rbboxes = delta2dbbox_v2(rois, delta_rbboxes, self.target_means,
-        #                            self.target_stds, img_shape)
-        ori_rbboxes = delta2dbbox_v3(rois[:, 1:], delta_rbboxes, self.target_means,
-                                     self.target_stds, img_shape)
+                         img_shape,
+                         v2=False):
+        if v2:
+            ori_rbboxes = delta2dbbox_v2(rois[:, 1:], delta_rbboxes, self.target_means,
+                                    self.target_stds, img_shape)
+        else:
+            ori_rbboxes = delta2dbbox_v3(rois[:, 1:], delta_rbboxes, self.target_means,
+                                        self.target_stds, img_shape)
         return ori_rbboxes
 
     def get_det_rbboxes(self,

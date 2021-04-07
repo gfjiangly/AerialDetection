@@ -36,6 +36,8 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
                  mask_roi_extractor=None,
                  mask_head=None,
                  mda_head=None,
+                 use_piou_s0=False,
+                 use_piou_s1=False,
                  train_cfg=None,
                  test_cfg=None,
                  pretrained=None):
@@ -85,7 +87,8 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
         if mda_head is not None:
             # self.before_fpn = mda_head.before_fpn
             self.mda_head = builder.build_head(mda_head)
-            
+        self.use_piou_s0 = use_piou_s0
+        self.use_piou_s1 = use_piou_s1
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
 
@@ -203,13 +206,15 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
             ## rbbox
             rbbox_targets = self.bbox_head.get_target(
                 sampling_results, gt_masks, gt_labels, self.train_cfg.rcnn[0])
-            labels_, label_weights_, rbbox_targets_, rbbox_weights_ = rbbox_targets
-            ori_rbbox_targets, ori_rbbox_weights = self.bbox_head.get_ori_target_rbbox(sampling_results, gt_masks)
-            ori_rbbox_pred = self.bbox_head.get_ori_rbboxes(roi2droi(rois), bbox_pred, img_meta[0]['img_shape'])
-            ori_rbbox_targets = self.bbox_head.get_ori_rbboxes(roi2droi(rois), rbbox_targets_, img_meta[0]['img_shape'])
-            loss_bbox = self.bbox_head.loss(cls_score, ori_rbbox_pred, labels_, label_weights_, ori_rbbox_targets, ori_rbbox_weights)
-            # loss_bbox = self.bbox_head.loss(cls_score, bbox_pred,
-            #                                 *rbbox_targets)
+            if self.use_piou_s0:
+                labels_, label_weights_, rbbox_targets_, rbbox_weights_ = rbbox_targets
+                ori_rbbox_targets, ori_rbbox_weights = self.bbox_head.get_ori_target(sampling_results, gt_masks)
+                ori_rbbox_pred = self.bbox_head.get_ori_rbboxes(roi2droi(rois), bbox_pred, img_meta[0]['img_shape'])
+                ori_rbbox_targets = self.bbox_head.get_ori_rbboxes(roi2droi(rois), rbbox_targets_, img_meta[0]['img_shape'])
+                loss_bbox = self.bbox_head.loss(cls_score, ori_rbbox_pred, labels_, label_weights_, ori_rbbox_targets, ori_rbbox_weights)
+            else:
+                loss_bbox = self.bbox_head.loss(cls_score, bbox_pred,
+                                                *rbbox_targets)
             for name, value in loss_bbox.items():
                 losses['s{}.{}'.format(0, name)] = (value)
 
@@ -260,7 +265,13 @@ class RoITransformer(BaseDetectorNew, RPNTestMixin):
             cls_score, rbbox_pred = self.rbbox_head(rbbox_feats)
             rbbox_targets = self.rbbox_head.get_target_rbbox(sampling_results, gt_obbs,
                                                         gt_labels, self.train_cfg.rcnn[1])
-            loss_rbbox = self.rbbox_head.loss(cls_score, rbbox_pred, *rbbox_targets)
+            if self.use_piou_s1:
+                labels_, label_weights_, rbbox_targets_, rbbox_weights_ = rbbox_targets
+                ori_rbbox_targets, ori_rbbox_weights = self.rbbox_head.get_ori_target_rbbox(sampling_results, gt_obbs)
+                ori_rbbox_pred = self.bbox_head.get_ori_rbboxes(rrois, rbbox_pred, img_meta[0]['img_shape'], v2=True)
+                loss_rbbox = self.rbbox_head.loss(cls_score, ori_rbbox_pred, labels_, label_weights_, ori_rbbox_targets, ori_rbbox_weights)
+            else:
+                loss_rbbox = self.rbbox_head.loss(cls_score, rbbox_pred, *rbbox_targets)
             for name, value in loss_rbbox.items():
                 losses['s{}.{}'.format(1, name)] = (value)
         

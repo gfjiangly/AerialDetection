@@ -1,8 +1,10 @@
 import torch
+import numpy as np
 
 from .transforms_rbbox import dbbox2delta, delta2dbbox, \
     mask2poly, get_best_begin_point, polygonToRotRectangle_batch\
-    , best_match_dbbox2delta, delta2dbbox_v3, dbbox2delta_v3, hbb2obb_v2
+    , best_match_dbbox2delta, delta2dbbox_v3, dbbox2delta_v3, hbb2obb_v2, \
+    choose_best_match_batch
 from ..utils import multi_apply
 
 
@@ -122,7 +124,7 @@ def bbox_target_rbbox_single(pos_bboxes,
     return labels, label_weights, bbox_targets, bbox_weights
 
 
-def bbox_target_ori_rbbox(pos_bboxes_list,
+def bbox_ori_target_rbbox(pos_bboxes_list,
                           neg_bboxes_list,
                           pos_assigned_gt_inds_list,
                           gt_masks_list,
@@ -140,7 +142,7 @@ def bbox_target_ori_rbbox(pos_bboxes_list,
     return bbox_targets, bbox_weights
 
 
-def bbox_target_ori_rbbox_single(pos_bboxes,
+def bbox_ori_target_rbbox_single(pos_bboxes,
                                  neg_bboxes,
                                  pos_assigned_gt_inds,
                                  gt_masks,
@@ -245,6 +247,46 @@ def rbbox_target_rbbox_single(pos_rbboxes,
 
     return labels, label_weights, bbox_targets, bbox_weights
 
+
+def rbbox_ori_target_rbbox(pos_rbboxes_list,
+                         neg_rbboxes_list,
+                         pos_gt_rbboxes_list,
+                         reg_classes=1,
+                         concat=True):
+    bbox_targets, bbox_weights = multi_apply(
+        rbbox_ori_target_rbbox_single,
+        pos_rbboxes_list,
+        neg_rbboxes_list,
+        pos_gt_rbboxes_list,
+        reg_classes=reg_classes)
+    if concat:
+        bbox_targets = torch.cat(bbox_targets, 0)
+        bbox_weights = torch.cat(bbox_weights, 0)
+    return bbox_targets, bbox_weights
+
+
+def rbbox_ori_target_rbbox_single(pos_rbboxes,
+                                neg_rbboxes,
+                                pos_gt_rbboxes,
+                                reg_classes=1):
+    assert pos_rbboxes.size(1) == 5
+    num_pos = pos_rbboxes.size(0)
+    num_neg = neg_rbboxes.size(0)
+    num_samples = num_pos + num_neg
+    bbox_targets = pos_rbboxes.new_zeros(num_samples, 5)
+    bbox_weights = pos_rbboxes.new_zeros(num_samples, 5)
+
+    if num_pos > 0:
+        gt_boxes_new = choose_best_match_batch(pos_rbboxes, pos_gt_rbboxes)
+        try:
+            assert np.all(pos_rbboxes.cpu().numpy()[:, 4] <= (np.pi + 0.001))
+        except Exception as e:
+            import pdb
+            pdb.set_trace()
+        bbox_targets[:num_pos, :] = gt_boxes_new
+        bbox_weights[:num_pos, :] = 1
+
+    return bbox_targets, bbox_weights
 
 
 def expand_target_rbbox(dbbox_targets, dbbox_weights, labels, num_classes):

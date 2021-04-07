@@ -20,7 +20,7 @@ from .transforms_rbbox import (dbbox2delta, delta2dbbox, mask2poly,
                                delta2dbbox_v3, dbbox2delta_v3, hbb2obb_v2, RotBox2Polys, RotBox2Polys_torch,
                                poly2bbox, dbbox_rotate_mapping, bbox_rotate_mapping,
                                bbox_rotate_mapping, dbbox_mapping_back)
-from .bbox_target_rbbox import bbox_target_rbbox, rbbox_target_rbbox, bbox_target_ori_rbbox
+from .bbox_target_rbbox import bbox_target_rbbox, rbbox_target_rbbox, bbox_ori_target_rbbox, rbbox_ori_target_rbbox
 
 __all__ = [
     'bbox_overlaps', 'BaseAssigner', 'MaxIoUAssigner', 'AssignResult',
@@ -38,5 +38,5 @@ __all__ = [
     'delta2dbbox_v2', 'delta2dbbox_v3', 'dbbox2delta_v3',
     'hbb2obb_v2', 'RotBox2Polys', 'RotBox2Polys_torch', 'poly2bbox', 'dbbox_rotate_mapping',
     'bbox_rotate_mapping', 'bbox_rotate_mapping', 'dbbox_mapping_back',
-    'bbox_target_ori_rbbox'
+    'bbox_ori_target_rbbox', 'rbbox_ori_target_rbbox'
 ]
