@@ -2,7 +2,6 @@ import argparse
 import os.path as osp
 import shutil
 import tempfile
-import time
 
 import mmcv
 import torch
@@ -14,7 +13,7 @@ from mmdet.apis import init_dist
 from mmdet.core import results2json, coco_eval
 from mmdet.datasets import build_dataloader, get_dataset
 from mmdet.models import build_detector
-
+import time
 
 def get_time_str():
     return time.strftime('%Y%m%d_%H%M%S', time.localtime())
@@ -119,7 +118,7 @@ def parse_args():
         '--eval',
         type=str,
         nargs='+',
-        choices=['proposal', 'proposal_fast', 'bbox', 'segm', 'keypoints'],
+        choices=['proposal', 'proposal_fast', 'hbb', 'obb', 'segm', 'keypoints'],
         help='eval types')
     parser.add_argument('--show', action='store_true', help='show results')
     parser.add_argument('--tmpdir', help='tmp dir for writing some results')
@@ -145,7 +144,8 @@ def main():
     if cfg.get('cudnn_benchmark', False):
         torch.backends.cudnn.benchmark = True
     cfg.model.pretrained = None
-    cfg.data.test.test_mode = True
+    # cfg.data.test.test_mode = True
+    cfg.data.val.test_mode = True
 
     # init distributed env first, since logger depends on the dist info.
     if args.launcher == 'none':
@@ -156,7 +156,7 @@ def main():
 
     # build the dataloader
     # TODO: support multiple images per gpu (only minor changes are needed)
-    dataset = get_dataset(cfg.data.test)
+    dataset = get_dataset(cfg.data.val)
     data_loader = build_dataloader(
         dataset,
         imgs_per_gpu=1,
@@ -185,28 +185,9 @@ def main():
     if args.out and rank == 0:
         print('\nwriting results to {}'.format(args.out))
         mmcv.dump(outputs, args.out)
-        
-        from parse_results import parse_results
-        parse_results(args.config, args.out, cfg.work_dir, 'OBB')
-
-        eval_types = args.eval
-        if eval_types:
-            print('Starting evaluate {}'.format(' and '.join(eval_types)))
-            if eval_types == ['proposal_fast']:
-                result_file = args.out
-                coco_eval(result_file, eval_types, dataset.coco)
-            else:
-                if not isinstance(outputs[0], dict):
-                    result_file = args.out + '.json'
-                    results2json(dataset, outputs, result_file)
-                    coco_eval(result_file, eval_types, dataset.coco)
-                else:
-                    for name in outputs[0]:
-                        print('\nEvaluating {}'.format(name))
-                        outputs_ = [out[name] for out in outputs]
-                        result_file = args.out + '.{}.json'.format(name)
-                        results2json(dataset, outputs_, result_file)
-                        coco_eval(result_file, eval_types, dataset.coco)
+        from cvtools.evaluation.eval_dota import EvalDOTADets
+        eval_data_dets = EvalDOTADets(args.out, cfg.data.val.ann_file)
+        eval_data_dets.eval(dataset='hrsc2016_L2')
 
 
 if __name__ == '__main__':

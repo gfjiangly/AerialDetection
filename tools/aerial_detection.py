@@ -139,7 +139,7 @@ class AerialDetectionOBB(object):
         texts = [self.model.CLASSES[index]+'|'+str(round(bbox[-1], 2))
                  for index, bbox in zip(labels, bboxes)]
         img = cvtools.draw_boxes_texts(
-            img, bboxes[:, :-1], texts, box_format='polygon')
+            img, bboxes[:, :-1], box_format='polygon', line_width=2)
         cvtools.imwrite(img, to_file)
     
     def vis_feats(self, modules_for_plot):

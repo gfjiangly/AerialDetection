@@ -169,6 +169,8 @@ class MDANet(nn.Module):
                 pa_mask = self.inception_attentions[i](x[i])
                 pa_mask_softmax = F.softmax(pa_mask, dim=1)
                 pa = pa_mask_softmax[:, [1], :, :]
+                if i == 0:
+                    self.add_heatmap(pa, 'mdanet_pa{}'.format(str(i)))
                 ca = self.se_blocks[i](x[i])
                 out = pa.mul(x[i])
                 out *= ca
@@ -191,7 +193,7 @@ class MDANet(nn.Module):
             new_masks[new_masks >= 0.5] = 1.
             new_masks[new_masks < 0.5] = 0.
             img_masks.append(new_masks)
-            # cv.imwrite('/code/AerialDetection/work_dirs/new_mask_{}.jpg'.format(i), new_masks*255)
+            # cv.imwrite('/code/AerialDetection/work_dirs/attention_vis/mask_{}.jpg'.format(i), new_masks*255)
         img_masks = np.stack(img_masks)
         # img_masks = img_masks[:, :, :, np.newaxis]
         mask_targets = torch.from_numpy(img_masks).float().to(device)
@@ -234,6 +236,7 @@ class MDANet(nn.Module):
             return fig
 
         heatmap = torch.sum(feature_maps, dim=1)
+        # heatmap /= 10.
         fig = figure_attention(heatmap.detach().cpu().numpy()[0, :])
         fig.savefig(f'work_dirs/attention_vis/{name}.jpg', 
                 bbox_inches='tight',
@@ -308,7 +311,6 @@ class MDANet2(nn.Module):
         img_masks = np.stack(img_masks)
         if self.binary_mask:
             img_masks[img_masks > 0 ] = 1
-        # img_masks = img_masks[:, :, :, np.newaxis]
         mask_targets = torch.from_numpy(img_masks).float().to(device)
         return mask_targets
 
