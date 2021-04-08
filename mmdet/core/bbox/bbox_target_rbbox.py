@@ -131,7 +131,7 @@ def bbox_ori_target_rbbox(pos_bboxes_list,
                           with_module=True,
                           concat=True):
     bbox_targets, bbox_weights = multi_apply(
-        bbox_target_ori_rbbox_single,
+        bbox_ori_target_rbbox_single,
         pos_bboxes_list,
         neg_bboxes_list,
         pos_assigned_gt_inds_list,
